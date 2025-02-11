@@ -50,7 +50,37 @@ let minZoneReward = 1;
 let maxZoneReward = 50;
 
 function setup() {
-  createCanvas(390, 844);
+  // Create canvas at original game dimensions
+  let gameWidth = 390;
+  let gameHeight = 844;
+  let targetRatio = gameWidth / gameHeight;
+  let canvasWidth, canvasHeight;
+
+  if (windowWidth / windowHeight > targetRatio) {
+    // Window is wider than needed - fit to height
+    canvasHeight = windowHeight;
+    canvasWidth = windowHeight * targetRatio;
+  } else {
+    // Window is taller than needed - fit to width
+    canvasWidth = windowWidth;
+    canvasHeight = windowWidth / targetRatio;
+  }
+
+  // Create the canvas with the original game dimensions
+  let canvas = createCanvas(gameWidth, gameHeight);
+  canvas.style('display', 'block');
+  canvas.style('position', 'fixed');
+  canvas.style('top', '0');
+  canvas.style('left', '0');
+
+  // Scale the canvas element to fit the window
+  canvas.style('width', canvasWidth + 'px');
+  canvas.style('height', canvasHeight + 'px');
+
+  // Scale all coordinates to match the new canvas size
+  let scaleX = canvasWidth / 390;
+  let scaleY = canvasHeight / 844;
+  scale(scaleX, scaleY);
 
   // Initialize pegs - Adjust Y positions
   let pegSpacingX = width / (numPegsPerRow + 1);
@@ -86,7 +116,9 @@ function setup() {
 }
 
 function draw() {
-  background(255); // White background
+  // Update background to use game dimensions
+  fill(255); // White background
+  rect(0, 0, 390, 844); // Add explicit rectangle covering game dimensions
 
   // Update ball release position
   if (isMousePressed && ballBalance > 0) {
@@ -607,4 +639,25 @@ function drawZones() {
     text(zoneRewards[i], zones[i].x + zoneWidth / 2, height - 20);
   }
   textAlign(LEFT);
+}
+
+// Add this function to handle window resizing
+function windowResized() {
+  let gameWidth = 390;
+  let gameHeight = 844;
+  let targetRatio = gameWidth / gameHeight;
+  let canvasWidth, canvasHeight;
+
+  if (windowWidth / windowHeight > targetRatio) {
+    canvasHeight = windowHeight;
+    canvasWidth = windowHeight * targetRatio;
+  } else {
+    canvasWidth = windowWidth;
+    canvasHeight = windowWidth / targetRatio;
+  }
+
+  // Update canvas element size
+  let canvas = document.querySelector('canvas');
+  canvas.style.width = canvasWidth + 'px';
+  canvas.style.height = canvasHeight + 'px';
 }
