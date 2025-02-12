@@ -2,14 +2,22 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   width: 100vw;
   height: 100vh;
   background: black;
 }
 
-canvas {
-  display: block;
+#canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+#canvas-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: min(100vw, 100vh * 390/844);
+  max-height: min(100vh, 100vw * 844/390);
 }
