@@ -59,19 +59,21 @@ function setup() {
   if (windowWidth / windowHeight > targetRatio) {
     // Window is wider than needed - fit to height
     canvasHeight = windowHeight;
-    canvasWidth = windowHeight * targetRatio;
+    canvasWidth = canvasHeight * targetRatio;
   } else {
     // Window is taller than needed - fit to width
     canvasWidth = windowWidth;
-    canvasHeight = windowWidth / targetRatio;
+    canvasHeight = canvasWidth / targetRatio;
   }
 
   // Create the canvas with the original game dimensions
   let canvas = createCanvas(gameWidth, gameHeight);
-  canvas.style('display', 'block');
-  canvas.style('position', 'fixed');
-  canvas.style('top', '0');
-  canvas.style('left', '0');
+
+  // Position canvas in center
+  canvas.style('position', 'absolute');
+  canvas.style('top', '50%');
+  canvas.style('left', '50%');
+  canvas.style('transform', 'translate(-50%, -50%)');
 
   // Scale the canvas element to fit the window
   canvas.style('width', canvasWidth + 'px');
@@ -649,11 +651,13 @@ function windowResized() {
   let canvasWidth, canvasHeight;
 
   if (windowWidth / windowHeight > targetRatio) {
+    // Window is wider than needed - fit to height
     canvasHeight = windowHeight;
-    canvasWidth = windowHeight * targetRatio;
+    canvasWidth = canvasHeight * targetRatio;
   } else {
+    // Window is taller than needed - fit to width
     canvasWidth = windowWidth;
-    canvasHeight = windowWidth / targetRatio;
+    canvasHeight = canvasWidth / targetRatio;
   }
 
   // Update canvas element size
