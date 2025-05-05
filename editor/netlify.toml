@@ -5,7 +5,7 @@
 
   # The directory to publish after the build finishes (relative to the repository root).
   # Assuming vite builds to a 'dist' folder inside 'sketch/'.
-  publish = "editor/dist/"
+  publish = "dist/"
 
   # The command to run to build your site.
   # This assumes you have a "build" script in sketch/package.json like "vite build".
