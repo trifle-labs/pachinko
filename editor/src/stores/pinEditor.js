@@ -1,45 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 
-export interface Pin {
-  x: number
-  y: number
-  id: number
-}
-
-export interface Pocket {
-  x: number
-  y: number
-  id: number
-  type: 'a' | 'b' | 'c'
-}
-
-export interface Layout {
-  id: string
-  name: string
-  pins: Pin[]
-  pockets: Pocket[]
-  startPoint: StartPoint
-  backgroundImage: string | null
-}
-
-interface SavedLayout {
-  id: string
-  name: string
-  pins: Pin[]
-  pockets: Pocket[]
-  timestamp: number
-  startPoint: StartPoint
-}
-
-interface StartPoint {
-  x: number
-  y: number
-  id: number
-  rotation: number  // In radians
-}
-
-// Add default values as constants
 const DEFAULT_START_POINT = {
   x: 450,  // 200 + 250 (to convert from center coordinates)
   y: 50,   // -200 + 250
@@ -47,20 +8,17 @@ const DEFAULT_START_POINT = {
   rotation: Math.PI  // Default to pointing left (9:00)
 }
 
-// Update the Mode type
-type Mode = 'single' | 'line' | 'pocket' | 'erase' | 'startPoint' | 'startDirection'
-
 export const usePinEditorStore = defineStore('pinEditor', () => {
-  const pins = ref<Pin[]>([])
-  const pockets = ref<Pocket[]>([])
+  const pins = ref([])
+  const pockets = ref([])
   const mirroringEnabled = ref(false)
-  const mode = ref<Mode>('single')
-  const pocketType = ref<'a' | 'b' | 'c'>('a')
-  const savedLayouts = ref<SavedLayout[]>([])
+  const mode = ref('single')
+  const pocketType = ref('a')
+  const savedLayouts = ref([])
   const hasUnsavedChanges = ref(false)
-  const currentLayoutId = ref<string | null>(null)
-  const startPoint = ref<StartPoint>(DEFAULT_START_POINT)
-  const backgroundImage = ref<string | null>(null)
+  const currentLayoutId = ref(null)
+  const startPoint = ref(DEFAULT_START_POINT)
+  const backgroundImage = ref(null)
 
   const POCKET_COLORS = {
     a: '#FF4B4B',
@@ -68,11 +26,11 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     c: '#2196F3'
   }
 
-  function addPin(pin: Pin) {
+  function addPin(pin) {
     pins.value.push(pin)
   }
 
-  function addPocket(pocket: Pocket) {
+  function addPocket(pocket) {
     pockets.value.push(pocket)
   }
 
@@ -89,18 +47,18 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     mirroringEnabled.value = false
   }
 
-  function updatePin(id: number, updates: Partial<Pin>) {
+  function updatePin(id, updates) {
     const index = pins.value.findIndex(p => p.id === id)
     if (index !== -1) {
       pins.value[index] = { ...pins.value[index], ...updates }
     }
   }
 
-  function removePin(id: number) {
+  function removePin(id) {
     pins.value = pins.value.filter(pin => pin.id !== id)
   }
 
-  function updatePocket(id: number, updates: Partial<Pocket>) {
+  function updatePocket(id, updates) {
     const index = pockets.value.findIndex(p => p.id === id)
     if (index !== -1) {
       pockets.value[index] = { ...pockets.value[index], ...updates }
@@ -113,7 +71,7 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     if (saved) {
       const parsedLayouts = JSON.parse(saved)
       // Create deep copies of each layout and its contents
-      savedLayouts.value = parsedLayouts.map((layout: SavedLayout) => ({
+      savedLayouts.value = parsedLayouts.map((layout) => ({
         ...layout,
         pins: layout.pins.map(pin => ({ ...pin })),
         pockets: layout.pockets.map(pocket => ({ ...pocket })),
@@ -140,14 +98,13 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     }
   }, { deep: true })
 
-  // Save layout
-  const saveCurrentLayout = async (name: string, isUpdate = false) => {
-    const layout: Layout = {
-      id: isUpdate ? currentLayoutId.value! : Date.now().toString(),
+  const saveCurrentLayout = async (name, isUpdate = false) => {
+    const layout = {
+      id: isUpdate ? currentLayoutId.value : Date.now().toString(),
       name,
       pins: pins.value.map(pin => ({ ...pin })),
       pockets: pockets.value.map(pocket => ({ ...pocket })),
-      startPoint: { ...startPoint.value! },
+      startPoint: { ...startPoint.value },
       backgroundImage: backgroundImage.value
     }
 
@@ -166,8 +123,7 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     return layout
   }
 
-  // Update loadLayout to properly reset hasUnsavedChanges
-  const loadLayout = (layoutId: string) => {
+  const loadLayout = (layoutId) => {
     const layout = savedLayouts.value.find(l => l.id === layoutId)
     if (layout) {
       console.log('Loading layout:', layout.name, 'ID:', layout.id)
@@ -182,20 +138,18 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     }
   }
 
-  // Delete layout
-  const deleteLayout = (layoutId: string) => {
+  const deleteLayout = (layoutId) => {
     savedLayouts.value = savedLayouts.value.filter(l => l.id !== layoutId)
     localStorage.setItem('pachinko-layouts', JSON.stringify(savedLayouts.value))
   }
 
-  // Add a clear current layout function
   const clearCurrentLayout = () => {
     currentLayoutId.value = null
     clearAll()
     hasUnsavedChanges.value = false
   }
 
-  function setStartPoint(x: number, y: number, rotation = Math.PI) {
+  function setStartPoint(x, y, rotation = Math.PI) {
     startPoint.value = {
       x,
       y,
@@ -204,13 +158,13 @@ export const usePinEditorStore = defineStore('pinEditor', () => {
     }
   }
 
-  function updateStartPointRotation(rotation: number) {
+  function updateStartPointRotation(rotation) {
     if (startPoint.value) {
       startPoint.value.rotation = rotation
     }
   }
 
-  function setBackgroundImage(imageData: string | null) {
+  function setBackgroundImage(imageData) {
     backgroundImage.value = imageData
   }
 

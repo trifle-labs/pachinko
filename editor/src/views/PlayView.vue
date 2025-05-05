@@ -9,7 +9,7 @@
         <div class="flex items-center w-48">  <!-- Fixed width container -->
           <input 
             type="range" 
-            v-model.number="ballSpeed" 
+            v-model="ballSpeed" 
             min="0.2"
             max="4"
             step="0.01"
@@ -39,7 +39,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePinEditorStore } from '@/stores/pinEditor'
@@ -47,23 +47,16 @@ import p5 from 'p5'
 
 const route = useRoute()
 const store = usePinEditorStore()
-const p5Container = ref<HTMLDivElement>()
-let p5Instance: p5
+const p5Container = ref()
+let p5Instance
 const ballSpeed = ref(1.5)
 const formattedSpeed = computed(() => Number(ballSpeed.value).toFixed(2))
 const ballBalance = ref(100)
-const scorePopups = ref<Array<{
-  x: number,
-  y: number,
-  value: number,
-  color: string,
-  timestamp: number
-}>>([])
+const scorePopups = ref([])
 
 onMounted(() => {
-  const layoutId = route.params.layoutId as string
+  const layoutId = route.params.layoutId
   const layout = store.savedLayouts.find(l => l.id === layoutId)
-  
   if (!layout) return
   
   let currentBallSpeed = ballSpeed.value
@@ -72,51 +65,40 @@ onMounted(() => {
     currentBallSpeed = newSpeed
   })
   
-  const sketch = (p: p5) => {
-    let cameraRotX = -0.2  // Start slightly tilted
+  const sketch = (p) => {
+    let cameraRotX = -0.2
     let cameraRotY = 0
-    let zoom = 0.6  // Start more zoomed in
+    let zoom = 2
     let isDragging = false
     let lastMouseX = 0
     let lastMouseY = 0
-    const EDITOR_RADIUS = 250  // Changed from 180
-    const PIN_HEIGHT = 30    // Increased from 15 to 30
-    const PIN_RADIUS = 1.5   // Reduced from 3 to 1.5
+    const EDITOR_RADIUS = 250
+    const PIN_HEIGHT = 30
+    const PIN_RADIUS = 1.5
     const BOARD_THICKNESS = 5
-    const WALL_HEIGHT = 50   // Add wall height constant
-    const segments = 64      // Add segments constant for wall detail
+    const WALL_HEIGHT = 50
+    const segments = 64
 
-    // Add ball-related constants and variables
     const BALL_RADIUS = 5
-    const BALL_SPAWN_DELAY = 500 // ms
+    const BALL_SPAWN_DELAY = 200
     let lastBallSpawnTime = Date.now()
-    let balls: Array<{
-      x: number,
-      y: number,
-      vx: number,
-      vy: number,
-      radius: number
-    }> = []
+    let balls = []
 
-    let backboardTexture: p5.Image | null = null
+    let backboardTexture = null
 
     p.preload = () => {
-      // Load the texture if it exists
       if (layout?.backgroundImage) {
         backboardTexture = p.loadImage(layout.backgroundImage)
       }
     }
 
     p.setup = () => {
-      const canvas = p.createCanvas(p5Container.value!.clientWidth, p5Container.value!.clientWidth, p.WEBGL)
-      canvas.parent(p5Container.value!)
+      const canvas = p.createCanvas(p5Container.value.clientWidth, p5Container.value.clientWidth, p.WEBGL)
+      canvas.parent(p5Container.value)
       p.angleMode(p.RADIANS)
-      p.perspective(p.PI / 3, 1, 0.1, 10000)
     }
 
-    // Add the transformCoordinates helper function
-    const transformCoordinates = (x: number, y: number) => {
-      // Convert from editor coordinates (0-500) to centered coordinates (-250 to 250)
+    const transformCoordinates = (x, y) => {
       return {
         x: x - 250,
         y: y - 250
@@ -126,11 +108,34 @@ onMounted(() => {
     p.draw = () => {
       p.background(255)
       p.smooth()
-      
-      p.translate(0, 0, -250 * zoom)
+
+      // Update perspective based on zoom
+      const fov = p.PI / 3 / zoom  // Adjust field of view instead of position
+      p.perspective(fov, 1, 0.1, 10000)
+
+      // Fixed camera distance
+      p.translate(0, 0, -500)  // Fixed distance
       p.rotateX(cameraRotX)
       p.rotateY(cameraRotY)
-      
+
+
+      const light = {
+        x: 100,
+        y: -300,
+        z: 0
+      }
+      // Set up global lighting in world space before any camera transforms
+      p.ambientLight(150)
+      p.pointLight(255, 255, 255, light.x, light.y, light.z)
+
+      // Draw light source visualization
+      p.push()
+      p.translate(light.x, light.y, light.z)  // Same position as the light
+      p.fill(255, 255, 0)  // Yellow
+      p.noStroke()
+      // p.sphere(5)  // Small sphere for light source
+      p.pop()
+
       // Draw the circular backboard with texture
       p.push()
       if (backboardTexture) {
@@ -144,40 +149,35 @@ onMounted(() => {
       p.circle(0, 0, EDITOR_RADIUS * 2)
       p.pop()
 
-      // Draw vertical lines for the wall - keeping most except bottom gap
+
+      // Draw walls - keeping most except bottom gap
       p.stroke('#87CEEB')
       p.strokeWeight(1)
       for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * p.TWO_PI
         // Draw wall except for bottom gap (not between 0.4π and 0.6π)
         if (angle <= 0.4 * p.PI || angle >= 0.6 * p.PI) {
-          const x = Math.cos(angle) * EDITOR_RADIUS
-          const y = Math.sin(angle) * EDITOR_RADIUS
-          p.line(x, y, 0, x, y, WALL_HEIGHT)
+          const smallerRadius = (EDITOR_RADIUS * .99)
+          const x = Math.cos(angle) * smallerRadius
+          const y = Math.sin(angle) * smallerRadius
+          
+          // Draw wall segment as a plane
+          p.push()
+          p.translate(x, y, WALL_HEIGHT / 4)  // Move to center of wall segment
+          
+          // Calculate rotation to face center
+          const rotationAngle = Math.atan2(y, x)
+          p.rotateZ(rotationAngle)
+          p.rotateY(p.PI/2)
+          
+          // Draw wall segment
+          p.fill(255, 255, 255)  // Light blue, semi-transparent
+          p.noStroke()
+          p.plane(p.TWO_PI * smallerRadius / segments, WALL_HEIGHT/2)  // Width based on segment size
+          p.pop()
         }
       }
       
-      // Draw circles for the wall at different heights
-      for (let h = 0; h <= WALL_HEIGHT; h += WALL_HEIGHT/4) {
-        p.push()
-        p.translate(0, 0, h)
-        p.noFill()  // Make circles transparent
-        p.stroke('#87CEEB')  // Light blue stroke
-        p.strokeWeight(1)
-        // Draw two arcs for the wall portions
-        p.arc(0, 0, EDITOR_RADIUS * 2, EDITOR_RADIUS * 2, 0.6 * p.PI, 2.4 * p.PI)
-        p.pop()
-      }
-
-      // Draw grid with more subtle lines
-      p.stroke(200, 200, 200, 80)
-      p.strokeWeight(0.5)
-      for (let x = -EDITOR_RADIUS; x <= EDITOR_RADIUS; x += 10) {
-        const y1 = Math.sqrt(EDITOR_RADIUS * EDITOR_RADIUS - x * x)
-        const y2 = -y1
-        p.line(x, y1, x, y2)
-        p.line(y2, x, y1, x)
-      }
 
       // Draw pins as solid grey cylinders
       layout.pins.forEach(pin => {
@@ -271,12 +271,12 @@ onMounted(() => {
         lastBallSpawnTime = currentTime
       }
 
-      // Update and draw balls (simplified without pathProgress)
+      // Update and draw balls
       for (let i = balls.length - 1; i >= 0; i--) {
         const ball = balls[i]
         
         // Apply physics
-        ball.vy += 0.1  // Gravity
+        ball.vy += 0.4  // Gravity
         ball.x += ball.vx
         ball.y += ball.vy
         
@@ -328,8 +328,8 @@ onMounted(() => {
               ball.vy = ball.vy - 2 * dot * ny
               
               // Add energy loss
-              ball.vx *= 0.8
-              ball.vy *= 0.8
+              ball.vx *= 0.9
+              ball.vy *= 0.9
               
               // Move ball outside pin
               const overlap = ball.radius + PIN_RADIUS - distance
@@ -393,7 +393,8 @@ onMounted(() => {
         // Draw ball
         p.push()
         p.translate(ball.x, ball.y, ball.radius)
-        p.fill(120)
+        p.specularMaterial(50)
+        p.shininess(250)
         p.noStroke()
         p.sphere(ball.radius)
         p.pop()
@@ -406,6 +407,8 @@ onMounted(() => {
 
       // Add cleanup call in draw loop
       cleanupPopups()
+
+      // p.pop()  // Restore world space transform
     }
 
     p.mousePressed = () => {
@@ -441,11 +444,16 @@ onMounted(() => {
       }
     }
 
-    p.mouseWheel = (event: WheelEvent) => {
-      const zoomSensitivity = 0.1
-      zoom += event.deltaY * zoomSensitivity
-      // Remove the upper constraint on zoom
-      zoom = Math.max(-3, zoom)  // Only keep minimum zoom
+    p.mouseWheel = (event) => {
+      const zoomSensitivity = 0.005  // Much smaller since we're affecting FOV
+      zoom -= event.deltaY * zoomSensitivity  // Invert the direction
+      
+      // Constrain zoom to reasonable FOV values
+      // zoom of 1 = default FOV (60°)
+      // zoom of 2 = narrow FOV (30°)
+      // zoom of 0.5 = wide FOV (120°)
+      zoom = p.constrain(zoom, 0.5, 10)
+      
       return false
     }
   }
@@ -459,18 +467,16 @@ onUnmounted(() => {
   }
 })
 
-// Add score popup function
-const addScorePopup = (x: number, y: number, value: number, color: string) => {
+const addScorePopup = (x, y, value, color) => {
   scorePopups.value.push({
-    x: x + p5Container.value!.getBoundingClientRect().left + p5Container.value!.clientWidth/2,
-    y: y + p5Container.value!.getBoundingClientRect().top + p5Container.value!.clientHeight/2,
+    x: x + p5Container.value.getBoundingClientRect().left + p5Container.value.clientWidth/2,
+    y: y + p5Container.value.getBoundingClientRect().top + p5Container.value.clientHeight/2,
     value,
     color,
     timestamp: Date.now()
   })
 }
 
-// Clean up old popups
 const cleanupPopups = () => {
   const now = Date.now()
   scorePopups.value = scorePopups.value.filter(

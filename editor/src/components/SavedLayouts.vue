@@ -39,12 +39,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { usePinEditorStore } from '@/stores/pinEditor'
 
 const store = usePinEditorStore()
 
-const loadLayoutWithConfirm = (layoutId: string) => {
+const loadLayoutWithConfirm = (layoutId) => {
   // First check if there's any content
   if (store.pins.length === 0 && store.pockets.length === 0) {
     store.loadLayout(layoutId)
@@ -92,7 +92,7 @@ const createNew = () => {
   }
 }
 
-const deleteLayoutWithConfirm = (layoutId: string) => {
+const deleteLayoutWithConfirm = (layoutId) => {
   if (confirm('Are you sure you want to delete this layout?')) {
     if (layoutId === store.currentLayoutId) {
       store.clearCurrentLayout()

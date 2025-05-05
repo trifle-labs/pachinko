@@ -1,0 +1,24 @@
+# Base configuration for Netlify builds
+[build]
+  # The base directory where your site's code resides relative to the repository root.
+  base = "editor/"
+
+  # The directory to publish after the build finishes (relative to the repository root).
+  # Assuming vite builds to a 'dist' folder inside 'sketch/'.
+  publish = "editor/dist/"
+
+  # The command to run to build your site.
+  # This assumes you have a "build" script in sketch/package.json like "vite build".
+  command = "npm install && npm run build"
+
+# Optional: Specify environment variables for the build
+[build.environment]
+  # Pin the Node.js version to ensure consistency with your local environment.
+  # Use a version you know works locally (e.g., 18, 20).
+  NODE_VERSION = "18"
+
+# Redirects and rewrites (if needed, e.g., for single-page applications)
+# [[redirects]]
+#   from = "/*"
+#   to = "/index.html"
+#   status = 200

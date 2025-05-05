@@ -329,18 +329,18 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed, onUnmounted } from 'vue'
-import { usePinEditorStore, type Pin, type Pocket } from '@/stores/pinEditor'
+import { usePinEditorStore } from '@/stores/pinEditor'
 import { useMousePressed } from '@vueuse/core'
 
 const store = usePinEditorStore()
-const svgRef = ref<SVGSVGElement>()
+const svgRef = ref()
 const isDragging = ref(false)
-const selectedPin = ref<Pin | null>(null)
-const selectedPocket = ref<Pocket | null>(null)
-const linePoints = ref<{x: number, y: number}[]>([])
-const previewLine = ref<{start: {x: number, y: number}, end: {x: number, y: number}} | null>(null)
+const selectedPin = ref(null)
+const selectedPocket = ref(null)
+const linePoints = ref([])
+const previewLine = ref(null)
 const { pressed: isErasing } = useMousePressed()
 
 const CENTER_ZONE_WIDTH = 10 // 5px on each side of center
@@ -350,10 +350,10 @@ const POCKET_COLORS = {
   a: '#FF4B4B',
   b: '#4CAF50',
   c: '#2196F3'
-} as const
+}
 
 // Add these near your other refs
-const lastPlacedPosition = ref<{x: number, y: number} | null>(null)
+const lastPlacedPosition = ref(null)
 const isPlacingPins = ref(false)
 
 // Add these near the top of the script section, with other constants/refs
@@ -361,7 +361,7 @@ const svgWidth = ref(500)  // Actual width
 const svgHeight = ref(500) // Actual height
 
 // Add the range helper function
-const range = (start: number, end: number, step: number) => {
+const range = (start, end, step) => {
   const result = []
   for (let i = start; i <= end; i += step) {
     result.push(i)
@@ -370,7 +370,7 @@ const range = (start: number, end: number, step: number) => {
 }
 
 // Helper functions
-const getCoordinates = (e: MouseEvent) => {
+const getCoordinates = (e) => {
   const svgRect = svgRef.value?.getBoundingClientRect()
   if (!svgRect) return { x: 0, y: 0, centerX: 0 }
   
@@ -381,12 +381,12 @@ const getCoordinates = (e: MouseEvent) => {
   }
 }
 
-const getMirroredX = (x: number) => {
+const getMirroredX = (x) => {
   const centerX = svgRef.value?.getBoundingClientRect().width ?? 0
   return (centerX / 2) + ((centerX / 2) - x)
 }
 
-const isInCenterZone = (x: number) => {
+const isInCenterZone = (x) => {
   const centerX = svgRef.value?.getBoundingClientRect().width ?? 0
   return Math.abs(x - centerX / 2) <= CENTER_ZONE_WIDTH / 2
 }
@@ -396,7 +396,7 @@ const getCenterX = () => {
 }
 
 // Add this helper function
-const isInsideCircle = (x: number, y: number) => {
+const isInsideCircle = (x, y) => {
   const centerX = svgWidth.value / 2
   const centerY = svgHeight.value / 2
   const dx = x - centerX
@@ -404,8 +404,8 @@ const isInsideCircle = (x: number, y: number) => {
   return Math.sqrt(dx * dx + dy * dy) <= 250  // 250 is circle radius
 }
 
-// Update createPinsAlongLine to filter out pins outside the circle
-const createPinsAlongLine = (start: {x: number, y: number}, end: {x: number, y: number}, spacing = 5) => {
+// Update createPinsAlongLine to remove type annotations
+const createPinsAlongLine = (start, end, spacing = 5) => {
   const dx = end.x - start.x
   const dy = end.y - start.y
   const distance = Math.sqrt(dx * dx + dy * dy)
@@ -413,7 +413,7 @@ const createPinsAlongLine = (start: {x: number, y: number}, end: {x: number, y: 
   
   if (numPins < 1) return []
   
-  const newPins: Pin[] = []
+  const newPins = []
   for (let i = 0; i <= numPins; i++) {
     const t = i / numPins
     const x = start.x + dx * t
@@ -436,7 +436,7 @@ const createPinsAlongLine = (start: {x: number, y: number}, end: {x: number, y: 
   return newPins
 }
 
-const eraseAtPoint = (x: number, y: number, radius = 15) => {
+const eraseAtPoint = (x, y, radius = 15) => {
   store.pins = store.pins.filter(pin => {
     const dx = pin.x - x
     const dy = pin.y - y
@@ -454,10 +454,10 @@ const eraseAtPoint = (x: number, y: number, radius = 15) => {
 
 // Add new refs for start point interaction
 const isMovingStartPoint = ref(false)
-const startPointDragStart = ref<{ x: number, y: number } | null>(null)
+const startPointDragStart = ref(null)
 
 // Event handlers
-const handleClick = (e: MouseEvent) => {
+const handleClick = (e) => {
   const { x, y } = getCoordinates(e)
 
   if (store.mode === 'startPoint') {
@@ -491,7 +491,7 @@ const handleClick = (e: MouseEvent) => {
   }
   
   if (store.mode === 'pocket') {
-    const newPocket: Pocket = { x, y, type: store.pocketType, id: Date.now() }
+    const newPocket = { x, y, type: store.pocketType, id: Date.now() }
     
     if (store.mirroringEnabled && isInCenterZone(x)) {
       store.addPocket({ ...newPocket, x: getCenterX() })
@@ -531,7 +531,7 @@ const handleClick = (e: MouseEvent) => {
   }
 }
 
-const handleMouseMove = (e: MouseEvent) => {
+const handleMouseMove = (e) => {
   const { x, y } = getCoordinates(e)
 
   // Update direction preview while in startDirection mode
@@ -544,7 +544,7 @@ const handleMouseMove = (e: MouseEvent) => {
 
   // Move start point with mouse when in move mode
   if (isMovingStartPoint.value) {
-    store.setStartPoint(x, y, store.startPoint!.rotation)
+    store.setStartPoint(x, y, store.startPoint.rotation)
     return
   }
 
@@ -561,7 +561,6 @@ const handleMouseMove = (e: MouseEvent) => {
     return
   }
   
-  // Add this near the start of handleMouseMove
   if (store.mode === 'single' && isPlacingPins.value) {
     handlePinPlacement(x, y)
     return
@@ -579,7 +578,7 @@ const handleMouseMove = (e: MouseEvent) => {
           const mirroredOriginalX = getMirroredX(originalX)
           
           const mirroredPin = store.pins.find(p => 
-            Math.abs(p.y - selectedPin.value!.y) < 1 && 
+            Math.abs(p.y - selectedPin.value.y) < 1 && 
             Math.abs(p.x - mirroredOriginalX) < 1
           )
           
@@ -602,7 +601,7 @@ const handleMouseMove = (e: MouseEvent) => {
           const mirroredOriginalX = getMirroredX(originalX)
           
           const mirroredPocket = store.pockets.find(p => 
-            Math.abs(p.y - selectedPocket.value!.y) < 1 && 
+            Math.abs(p.y - selectedPocket.value.y) < 1 && 
             Math.abs(p.x - mirroredOriginalX) < 1
           )
           
@@ -623,7 +622,7 @@ const handleMouseMove = (e: MouseEvent) => {
   }
 }
 
-const startDragging = (e: MouseEvent, pin: Pin | null, pocket: Pocket | null = null, startPoint: { x: number, y: number } | null = null) => {
+const startDragging = (e, pin = null, pocket = null, startPoint = null) => {
   e.stopPropagation()
   e.preventDefault()
   isDragging.value = true
@@ -642,7 +641,7 @@ const stopDragging = () => {
   lastPlacedPosition.value = null
 }
 
-const handleMouseDown = (e: MouseEvent) => {
+const handleMouseDown = (e) => {
   if (store.mode === 'erase') {
     e.preventDefault()
     const { x, y } = getCoordinates(e)
@@ -662,7 +661,7 @@ const handleModeChange = () => {
 const exportCoordinates = async () => {
   if (store.currentLayoutId) {
     const currentLayout = store.savedLayouts.find(l => l.id === store.currentLayoutId)
-    const choice = await new Promise<'update' | 'new' | null>(resolve => {
+    const choice = await new Promise(resolve => {
       const result = window.confirm(
         `Update existing layout "${currentLayout?.name}" or create new?\n` +
         'OK to update, Cancel to create new'
@@ -671,7 +670,7 @@ const exportCoordinates = async () => {
     })
 
     if (choice === 'update') {
-      await store.saveCurrentLayout(currentLayout!.name, true)
+      await store.saveCurrentLayout(currentLayout.name, true)
       return
     }
   }
@@ -692,21 +691,18 @@ const cursorClass = computed(() => {
   return 'cursor-default'
 })
 
-// Add this computed property
 const previewPins = computed(() => {
   if (!previewLine.value) return []
   return createPinsAlongLine(previewLine.value.start, previewLine.value.end)
 })
 
-// Add this helper function after your other helper functions
-const getDistanceBetweenPoints = (p1: {x: number, y: number}, p2: {x: number, y: number}) => {
+const getDistanceBetweenPoints = (p1, p2) => {
   const dx = p2.x - p1.x
   const dy = p2.y - p1.y
   return Math.sqrt(dx * dx + dy * dy)
 }
 
-// Update handlePinPlacement to check circle boundary
-const handlePinPlacement = (x: number, y: number) => {
+const handlePinPlacement = (x, y) => {
   if (!isPlacingPins.value) return
   
   // Only place pin if inside circle
@@ -732,20 +728,19 @@ const handlePinPlacement = (x: number, y: number) => {
   lastPlacedPosition.value = { x, y }
 }
 
-// Add these new handlers
-const toggleStartPointMove = (e: MouseEvent) => {
+const toggleStartPointMove = (e) => {
   e.stopPropagation()
   isMovingStartPoint.value = !isMovingStartPoint.value
 }
 
-const startRotating = (e: MouseEvent) => {
+const startRotating = (e) => {
   e.stopPropagation()
   if (!isMovingStartPoint.value) {
     startPointDragStart.value = { x: e.clientX, y: e.clientY }
   }
 }
 
-const handleRotating = (e: MouseEvent) => {
+const handleRotating = (e) => {
   if (startPointDragStart.value && store.startPoint) {
     const dx = e.clientX - store.startPoint.x
     const dy = e.clientY - store.startPoint.y
@@ -764,9 +759,8 @@ onUnmounted(() => {
   }
 })
 
-// Add new methods for image handling
-const handleImageUpload = async (event: Event) => {
-  const input = event.target as HTMLInputElement
+const handleImageUpload = async (event) => {
+  const input = event.target
   if (!input.files?.length) return
 
   const file = input.files[0]
@@ -803,7 +797,7 @@ const handleImageUpload = async (event: Event) => {
       const base64Image = canvas.toDataURL('image/jpeg', 0.8)
       store.setBackgroundImage(base64Image)
     }
-    image.src = e.target?.result as string
+    image.src = e.target?.result
   }
 
   reader.readAsDataURL(file)
@@ -823,4 +817,5 @@ text {
   pointer-events: none;
   user-select: none;
 }
+
 </style> 
